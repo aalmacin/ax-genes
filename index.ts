@@ -164,6 +164,7 @@ const getAxies = async (from: number, size: number) => {
             //     ...axieCurrentPrice
             // }
             // console.log(dataFrom, returnData)
+            completed++;
         })
         await Promise.all(axiePromises.map((p: Promise<any>) => p.then(() => console.log("COMPLETED: ", completed)).catch(e => console.log("COMPLETED: ", completed, e))))
 
