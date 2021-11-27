@@ -72,6 +72,63 @@ async function getAxieFromDatastore(axieId: string) {
     return undefined;
 }
 
+const variables = {
+    "from": 0,
+    "size": 24,
+    "sort": "PriceAsc",
+    "auctionType": "Sale",
+    "owner": null,
+    "criteria": {
+      "region": null,
+      "parts": [
+        "back-goldfish",
+        "mouth-square-teeth",
+        "horn-shoal-star",
+        "tail-nimo"
+      ],
+      "bodyShapes": null,
+      "classes": [
+        "Aquatic"
+      ],
+      "stages": null,
+      "numMystic": null,
+      "pureness": null,
+      "title": null,
+      "breedable": null,
+      "breedCount": null,
+      "hp": [],
+      "skill": [],
+      "speed": [],
+      "morale": []
+    },
+    "filterStuckAuctions": true
+  }
+
+//   const cleanFilter = {
+//         "from": 0,
+//         "size": 24,
+//         "sort": "PriceAsc",
+//         "auctionType": "Sale",
+//         "owner": null,
+//         "criteria": {
+//             "region": null,
+//             "parts": null,
+//             "bodyShapes": null,
+//             "classes": null,
+//             "stages": null,
+//             "numMystic": null,
+//             "pureness": null,
+//             "title": null,
+//             "breedable": null,
+//             "breedCount": null,
+//             "hp": [],
+//             "skill": [],
+//             "speed": [],
+//             "morale": []
+//         },
+//         "filterStuckAuctions": true
+//     }
+
 const getAxies = async ({from, size}: any) => {
     const marketResponse = await fetchAPI("https://graphql-gateway.axieinfinity.com/graphql", {
         method: "POST",
@@ -81,28 +138,9 @@ const getAxies = async ({from, size}: any) => {
         body: JSON.stringify({
             query: queries.GetAxieBriefList,
             variables: {
-                "from": from,
-                "size": size,
-                "sort": "PriceAsc",
-                "auctionType": "Sale",
-                "owner": null,
-                "criteria": {
-                    "region": null,
-                    "parts": null,
-                    "bodyShapes": null,
-                    "classes": null,
-                    "stages": null,
-                    "numMystic": null,
-                    "pureness": null,
-                    "title": null,
-                    "breedable": null,
-                    "breedCount": null,
-                    "hp": [],
-                    "skill": [],
-                    "speed": [],
-                    "morale": []
-                },
-                "filterStuckAuctions": true
+                ...variables,
+                from,
+                size
             } 
         })
     });
