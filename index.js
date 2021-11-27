@@ -1,6 +1,33 @@
 const {Datastore} = require('@google-cloud/datastore');
 const { AxieGene } = require("agp-npm/dist/axie-gene");
 const fetch = require("node-fetch");
+const queries = require('./queries');
+const datastore = new Datastore();
+
+async function getAxieDetail(axieId) {
+    const response =  await fetch("https://axieinfinity.com/graphql-server-v2/graphql", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            query: queries.GetAxieDetail,
+            variables: {
+                axieId
+            }
+        })
+    })
+    const responseJson = await response.json();
+    return responseJson.data.axie;
+}
+
+async function axieNotInDatastore(axieId) {
+    const query = datastore.createQuery('Axie')
+        .filter('axieId', axieId);
+    const [axie] = await datastore.runQuery(query);
+    console.log(axie)
+    return axie.length === 0;
+}
 
 (async () => {
     const marketResponse = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
@@ -9,53 +36,7 @@ const fetch = require("node-fetch");
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            query: `query GetAxieBriefList($auctionType: AuctionType, $criteria: AxieSearchCriteria, $from: Int, $sort: SortBy, $size: Int, $owner: String, $filterStuckAuctions: Boolean) {
-                axies(
-                  auctionType: $auctionType
-                  criteria: $criteria
-                  from: $from
-                  sort: $sort
-                  size: $size
-                  owner: $owner
-                  filterStuckAuctions: $filterStuckAuctions
-                ) {
-                  total
-                  results {
-                    ...AxieBrief
-                    __typename
-                  }
-                  __typename
-                }
-              }
-              
-              fragment AxieBrief on Axie {
-                id
-                name
-                stage
-                class
-                breedCount
-                image
-                title
-                battleInfo {
-                  banned
-                  __typename
-                }
-                auction {
-                  currentPrice
-                  currentPriceUSD
-                  __typename
-                }
-                parts {
-                  id
-                  name
-                  class
-                  type
-                  specialGenes
-                  __typename
-                }
-                __typename
-              }
-            `,
+            query: queries.GetAxieBriefList,
             variables: {
                 "from": 0,
                 "size": 10000000,
@@ -94,131 +75,22 @@ const fetch = require("node-fetch");
     const axies = res.data.axies.results;
     const fAxie = axies[0]
 
-    const response =  await fetch("https://axieinfinity.com/graphql-server-v2/graphql", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            query: `query GetAxieDetail($axieId: ID!) {
-                axie(axieId: $axieId) {
-                ...AxieDetail
-                __typename
-                }
-            }
-            
-            fragment AxieDetail on Axie {
-                id
-                name
-                genes
-                owner
-                birthDate
-                bodyShape
-                class
-                sireId
-                sireClass
-                matronId
-                matronClass
-                stage
-                title
-                breedCount
-                level
-                figure {
-                atlas
-                model
-                image
-                __typename
-                }
-                parts {
-                ...AxiePart
-                __typename
-                }
-                stats {
-                ...AxieStats
-                __typename
-                }
-                auction {
-                ...AxieAuction
-                __typename
-                }
-                ownerProfile {
-                name
-                __typename
-                }
-                children {
-                id
-                name
-                class
-                image
-                title
-                stage
-                __typename
-                }
-                __typename
-            }
-            
-            fragment AxiePart on AxiePart {
-                id
-                name
-                class
-                type
-                stage
-                abilities {
-                ...AxieCardAbility
-                __typename
-                }
-                __typename
-            }
-            
-            fragment AxieCardAbility on AxieCardAbility {
-                id
-                name
-                attack
-                defense
-                energy
-                description
-                backgroundUrl
-                effectIconUrl
-                __typename
-            }
-            
-            fragment AxieStats on AxieStats {
-                hp
-                speed
-                skill
-                morale
-                __typename
-            }
-            
-            fragment AxieAuction on Auction {
-                startingPrice
-                endingPrice
-                startingTimestamp
-                endingTimestamp
-                duration
-                timeLeft
-                currentPrice
-                currentPriceUSD
-                suggestedPrice
-                seller
-                listingIndex
-                __typename
-            }
-            `,
-            variables: {
-                axieId: fAxie.id
-            }
-        })
-    })
-    const responseJson = await response.json();
-    const axie = responseJson.data.axie;
-
     if(axie.battleInfo && axie.battleInfo.banned) {
         return;
     }
 
-    const axieGene = new AxieGene(axie.genes);
-    const currentAxieGenes = axieGene._genes;
+    let currentAxieGenes;
+    let axie;
+    if(axieNotInDatastore(fAxie.id)) {
+        axie = await getAxieDetail(fAxie.id)
+        const axieGene = new AxieGene(axie.genes);
+        currentAxieGenes = axieGene._genes;
+    }
+
+    if(!currentAxieGenes || !axie) {
+        throw new Error("Could not find axie in datastore and api");
+    }
+
     // TODO: Auction data must be updated all the time
     const combinedData = {
         id: axie.id,
@@ -235,14 +107,13 @@ const fetch = require("node-fetch");
         tail: currentAxieGenes.tail,
     }
     const kind = "Axie"
-    const datastore = new Datastore();
 
     const taskKey = datastore.key([kind, combinedData.id]);
 
-    await datastore.save({
-        key: taskKey,
-        data: combinedData
-    })
+    // await datastore.save({
+    //     key: taskKey,
+    //     data: combinedData
+    // })
 
     console.log(combinedData)
 })();
