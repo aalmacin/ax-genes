@@ -81,34 +81,36 @@ async function getAxieFromDatastore(axieId) {
         return;
     }
 
-    let currentAxieGenes;
+    let axieData = {
+        id: axie.id,
+        name: axie.name,
+        image: axie.figure.image,
+    };
     let axie = await getAxieFromDatastore(fAxie.id);
     const isAxieInDatastore = axie !== undefined;
 
     if(isAxieInDatastore) {
-        currentAxieGenes = axie;
+        axieData = axie;
     } else {
         axie = await getAxieDetail(fAxie.id)
         const axieGene = new AxieGene(axie.genes);
-        currentAxieGenes = axieGene._genes;
+        axieData = axieGene._genes;
     }
 
-    if(!currentAxieGenes || !axie) {
+    if(!axieData || !axie) {
         throw new Error("Could not find axie in datastore and api");
     }
 
     const geneData = {
-        id: axie.id,
-        name: axie.name,
-        class: currentAxieGenes.cls,
+        ...axieData,
+        class: axieData.cls,
         breedCount: axie.breedCount,
-        image: axie.figure.image,
-        eyes: currentAxieGenes.eyes,
-        ears: currentAxieGenes.ears,
-        horn: currentAxieGenes.horn,
-        mouth: currentAxieGenes.mouth,
-        back: currentAxieGenes.back,
-        tail: currentAxieGenes.tail,
+        eyes: axieData.eyes,
+        ears: axieData.ears,
+        horn: axieData.horn,
+        mouth: axieData.mouth,
+        back: axieData.back,
+        tail: axieData.tail,
     }
 
     // TODO: Auction data must be updated all the time
