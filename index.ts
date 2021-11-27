@@ -95,15 +95,14 @@ const getAxies = async (from: number, size: number) => {
 (async () => {
     await redisClient.connect();
     const firstRes = await getAxies(0, 100);
-    console.log(firstRes);
     let axies = firstRes.axies.results
     const pages = firstRes.axies.total / 100;
 
+    let completed = 0;
     let page = 0;
     do {
         if(page !== 0) {
             const res = await getAxies(page * 100, 100);
-            console.log(res);
             axies = res.axies.results
         }
         const axiePromises = axies.map(async (currAxie: any) => {
@@ -166,7 +165,7 @@ const getAxies = async (from: number, size: number) => {
             // }
             // console.log(dataFrom, returnData)
         })
-        await Promise.all(axiePromises.map((p: Promise<any>) => p.catch(e => console.log(e))))
+        await Promise.all(axiePromises.map((p: Promise<any>) => p.then(() => console.log("COMPLETED: ", completed)).catch(e => console.log("COMPLETED: ", completed, e))))
 
         page++;
     } while(page <= pages)
