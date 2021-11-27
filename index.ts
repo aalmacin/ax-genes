@@ -3,6 +3,11 @@ const {Datastore} = require('@google-cloud/datastore');
 const { AxieGene } = require("agp-npm/dist/axie-gene");
 const queries = require('./queries');
 const datastore = new Datastore();
+const cache = require('memory-cache');
+
+// TODOS:
+// 1. Memory cache
+// 2. React app
 
 type AxieGenes = {
     id: any;
@@ -32,6 +37,7 @@ async function getAxieDetail(axieId: string) {
         })
     })
     const responseJson = await response.json();
+    console.log("Get axie from graphql api")
     return responseJson.data.axie;
 }
 
@@ -42,6 +48,7 @@ async function getAxieFromDatastore(axieId: string) {
     if(axie.length !== 0) {
         return axie[0];
     }
+    console.log("Get axie from datastore")
     return undefined;
 }
 
@@ -95,51 +102,59 @@ async function getAxiesFromMarketPlace() {
     const axies = await getAxiesFromMarketPlace();
     // TODO: Loop
     const fAxie = axies[0]
+    const axieCurrentPrice = {currentPrice: fAxie.auction.currentPriceUSD}
 
     if(fAxie.battleInfo && fAxie.battleInfo.banned) {
         return;
     }
 
-    let axieGenes;
-    let axie = await getAxieFromDatastore(fAxie.id);
-    const isAxieInDatastore = axie !== undefined;
+    let axieGenes = cache.get(fAxie.id);
+    if(!axieGenes) {
+        let axie = await getAxieFromDatastore(fAxie.id);
+        const isAxieInDatastore = axie !== undefined;
 
-    const axieCurrentPrice = {currentPrice: fAxie.auction.currentPriceUSD}
-    if(isAxieInDatastore) {
-        axieGenes = {
-            ...axie, 
-            ...axieCurrentPrice
-        };
-    } else {
-        axie = await getAxieDetail(fAxie.id)
+        if(isAxieInDatastore) {
+            axieGenes = {
+                ...axie, 
+            };
+        } else {
+            axie = await getAxieDetail(fAxie.id)
 
-        if(!axie) {
-            throw new Error("Could not find axie in datastore and api");
+            if(!axie) {
+                throw new Error("Could not find axie in datastore and api");
+            }
+
+            const axieGene = new AxieGene(axie.genes);
+            const genesData = axieGene._genes;
+            axieGenes = {
+                id: axie.id,
+                name: axie.name,
+                breedCount: axie.breedCount,
+                image: axie.figure.image,
+                class: genesData.cls,
+                eyes: genesData.eyes,
+                ears: genesData.ears,
+                horn: genesData.horn,
+                mouth: genesData.mouth,
+                back: genesData.back,
+                tail: genesData.tail,
+            };
+            const kind = "Axie"
+            const taskKey = datastore.key([kind, axieGenes.id]);
+            await datastore.save({
+                key: taskKey,
+                data: axieGenes
+            })
         }
 
-        const axieGene = new AxieGene(axie.genes);
-        const genesData = axieGene._genes;
-        axieGenes = {
-            ...axieCurrentPrice,
-            id: axie.id,
-            name: axie.name,
-            breedCount: axie.breedCount,
-            image: axie.figure.image,
-            class: genesData.cls,
-            eyes: genesData.eyes,
-            ears: genesData.ears,
-            horn: genesData.horn,
-            mouth: genesData.mouth,
-            back: genesData.back,
-            tail: genesData.tail,
-        };
-        const kind = "Axie"
-        const taskKey = datastore.key([kind, axieGenes.id]);
-        await datastore.save({
-            key: taskKey,
-            data: axieGenes
-        })
+        cache.put(axieGenes.id, axieGenes, 1000 * 60 * 60 * 24 * 7);
+    } else {
+        console.log("Get axie from cache")
     }
 
-    console.log(axieGenes)
+    const returnData = {
+        ...axieGenes,
+        ...axieCurrentPrice
+    }
+    console.log(returnData)
 })();
