@@ -21,12 +21,14 @@ async function getAxieDetail(axieId) {
     return responseJson.data.axie;
 }
 
-async function axieNotInDatastore(axieId) {
+async function getAxieFromDatastore(axieId) {
     const query = datastore.createQuery('Axie')
         .filter('axieId', axieId);
     const [axie] = await datastore.runQuery(query);
-    console.log('datastore axie', axie)
-    return axie.length === 0;
+    if(axie.length !== 0) {
+        return axie[0];
+    }
+    return undefined;
 }
 
 (async () => {
@@ -75,14 +77,15 @@ async function axieNotInDatastore(axieId) {
     const axies = res.data.axies.results;
     const fAxie = axies[0]
 
-    console.log(fAxie)
     if(fAxie.battleInfo && fAxie.battleInfo.banned) {
         return;
     }
 
     let currentAxieGenes;
-    let axie;
-    if(axieNotInDatastore(fAxie.id)) {
+    let axie = getAxieFromDatastore(fAxie.axieId);
+    const isAxieInDatastore = axie !== undefined;
+
+    if(!isAxieInDatastore) {
         axie = await getAxieDetail(fAxie.id)
         const axieGene = new AxieGene(axie.genes);
         currentAxieGenes = axieGene._genes;
@@ -92,14 +95,12 @@ async function axieNotInDatastore(axieId) {
         throw new Error("Could not find axie in datastore and api");
     }
 
-    // TODO: Auction data must be updated all the time
-    const combinedData = {
+    const geneData = {
         id: axie.id,
         name: axie.name,
         class: currentAxieGenes.cls,
         breedCount: axie.breedCount,
         image: axie.figure.image,
-        currentPrice: axie.auction.currentPriceUSD,
         eyes: currentAxieGenes.eyes,
         ears: currentAxieGenes.ears,
         horn: currentAxieGenes.horn,
@@ -107,14 +108,21 @@ async function axieNotInDatastore(axieId) {
         back: currentAxieGenes.back,
         tail: currentAxieGenes.tail,
     }
-    const kind = "Axie"
 
-    const taskKey = datastore.key([kind, combinedData.id]);
+    // TODO: Auction data must be updated all the time
+    const dataWithPrice = {
+        ...geneData,
+        currentPrice: axie.auction.currentPriceUSD,
+    }
 
-    // await datastore.save({
-    //     key: taskKey,
-    //     data: combinedData
-    // })
+    if(!isAxieInDatastore) {
+        const kind = "Axie"
+        const taskKey = datastore.key([kind, geneData.id]);
+        await datastore.save({
+            key: taskKey,
+            data: geneData
+        })
+    }
 
-    console.log(combinedData)
+    console.log(dataWithPrice)
 })();
