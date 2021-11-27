@@ -149,7 +149,7 @@ async function getAxiesFromMarketPlace() {
             })
         }
 
-        cache.put(axieGenes.id, axieGenes, 1000 * 60 * 60 * 24 * 7);
+        cache.set(axieGenes.id, axieGenes, 1000 * 60 * 60 * 24 * 7);
     } else {
         console.log("Get axie from cache")
     }
