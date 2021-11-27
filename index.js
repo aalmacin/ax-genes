@@ -25,7 +25,7 @@ async function axieNotInDatastore(axieId) {
     const query = datastore.createQuery('Axie')
         .filter('axieId', axieId);
     const [axie] = await datastore.runQuery(query);
-    console.log(axie)
+    console.log('datastore axie', axie)
     return axie.length === 0;
 }
 
@@ -75,7 +75,8 @@ async function axieNotInDatastore(axieId) {
     const axies = res.data.axies.results;
     const fAxie = axies[0]
 
-    if(axie.battleInfo && axie.battleInfo.banned) {
+    console.log(fAxie)
+    if(fAxie.battleInfo && fAxie.battleInfo.banned) {
         return;
     }
 
