@@ -84,7 +84,7 @@ const getAxies = async (from: number, size: number) => {
                     "morale": []
                 },
                 "filterStuckAuctions": true
-                } 
+            } 
         })
     });
     const res = await marketResponse.json();
@@ -95,6 +95,7 @@ const getAxies = async (from: number, size: number) => {
 (async () => {
     await redisClient.connect();
     const firstRes = await getAxies(0, 100);
+    console.log(firstRes);
     let axies = firstRes.axies.results
     const pages = firstRes.axies.total / 100;
 
@@ -102,6 +103,7 @@ const getAxies = async (from: number, size: number) => {
     do {
         if(page !== 0) {
             const res = await getAxies(page * 100, 100);
+            console.log(res);
             axies = res.axies.results
         }
         const axiePromises = axies.map(async (currAxie: any) => {
