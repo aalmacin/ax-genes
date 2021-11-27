@@ -13,7 +13,7 @@ const logger = winston.createLogger({
   level: 'info',
   format: winston.format.simple(),
   transports: [
-    winston.transports.Console,
+    winston.transports.Console(),
     new DailyRotateFile({ filename: 'error.log', level: 'error' }),
     new DailyRotateFile({ filename: 'combined.log' }),
   ],
