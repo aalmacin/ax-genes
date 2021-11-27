@@ -19,7 +19,7 @@ const logger = winston.createLogger({
   ],
 });
 
-redisClient.on('error', (err: any) => logger.error('Redis Client Error', err));
+redisClient.on('error', (err: any) => logger.error(`Redis Client Error: ${err}`));
 
 
 // TODOS:
@@ -57,7 +57,7 @@ async function getAxieDetail(axieId: string) {
         const responseJson = await response.json();
         return responseJson.data.axie;
     } catch (e) {
-        logger.error("Failed to get Axie detail for", axieId);
+        logger.error(`Failed to get Axie detail for ${axieId}`);
         logger.error(e);
     }
 }
@@ -185,7 +185,7 @@ const getAxies = async ({from, size}: any) => {
             // console.log(dataFrom, returnData)
             completed++;
         })
-        await Promise.all(axiePromises.map((p: Promise<any>) => p.then(() => logger.info("COMPLETED: ", completed)).catch(e => logger.info("COMPLETED: ", completed, e))))
+        await Promise.all(axiePromises.map((p: Promise<any>) => p.then(() => logger.info(`COMPLETED: ${completed}`)).catch(e => logger.error(`COMPLETED: ${completed}\n${e}`))))
 
         page++;
     } while(page <= pages)
