@@ -111,8 +111,7 @@ async function getAxiesFromMarketPlace() {
     }
 
     let dataFrom = 'Cache'
-    // let axieGenes = await redisClient.get(fAxie.id);
-    let axieGenes = undefined;
+    let axieGenes = await redisClient.get(fAxie.id);
     if(!axieGenes) {
         let axie = await getAxieFromDatastore(fAxie.id);
         const isAxieInDatastore = axie !== undefined;
@@ -153,7 +152,9 @@ async function getAxiesFromMarketPlace() {
             })
         }
 
-        // await redisClient.set(axieGenes.id, axieGenes);
+        await redisClient.set(axieGenes.id, JSON.stringify(axieGenes));
+    } else {
+        axieGenes = JSON.parse(axieGenes);
     }
 
     const returnData = {
@@ -161,4 +162,5 @@ async function getAxiesFromMarketPlace() {
         ...axieCurrentPrice
     }
     console.log(dataFrom, returnData)
+    redisClient.quit();
 })();
