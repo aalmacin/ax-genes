@@ -1,11 +1,25 @@
+const fetchAPI = require("node-fetch")
 const {Datastore} = require('@google-cloud/datastore');
 const { AxieGene } = require("agp-npm/dist/axie-gene");
-const fetch = require("node-fetch");
 const queries = require('./queries');
 const datastore = new Datastore();
 
-async function getAxieDetail(axieId) {
-    const response =  await fetch("https://axieinfinity.com/graphql-server-v2/graphql", {
+type AxieGenes = {
+    id: any;
+    name: any;
+    class: any;
+    breedCount: any;
+    image: any;
+    eyes: any;
+    ears: any;
+    horn: any;
+    mouth: any;
+    back: any;
+    tail: any;
+}
+
+async function getAxieDetail(axieId: string) {
+    const response =  await fetchAPI("https://axieinfinity.com/graphql-server-v2/graphql", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json',
@@ -21,7 +35,7 @@ async function getAxieDetail(axieId) {
     return responseJson.data.axie;
 }
 
-async function getAxieFromDatastore(axieId) {
+async function getAxieFromDatastore(axieId: string) {
     const query = datastore.createQuery('Axie')
         .filter('id', axieId);
     const [axie] = await datastore.runQuery(query);
@@ -31,8 +45,8 @@ async function getAxieFromDatastore(axieId) {
     return undefined;
 }
 
-(async () => {
-    const marketResponse = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
+async function getAxiesFromMarketPlace() {
+    const marketResponse = await fetchAPI("https://graphql-gateway.axieinfinity.com/graphql", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -74,59 +88,58 @@ async function getAxieFromDatastore(axieId) {
         })
     });
     const res = await marketResponse.json();
-    const axies = res.data.axies.results;
+    return res.data.axies.results;
+}
+
+(async () => {
+    const axies = await getAxiesFromMarketPlace();
+    // TODO: Loop
     const fAxie = axies[0]
 
     if(fAxie.battleInfo && fAxie.battleInfo.banned) {
         return;
     }
 
-    let axieData = {
-        id: fAxie.id,
-        name: fAxie.name,
-        image: fAxie.figure.image,
-    };
+    let axieGenes;
     let axie = await getAxieFromDatastore(fAxie.id);
     const isAxieInDatastore = axie !== undefined;
 
+    const axieCurrentPrice = {currentPrice: axie.auction.currentPriceUSD}
     if(isAxieInDatastore) {
-        axieData = axie;
+        axieGenes = {
+            ...axie, 
+            ...axieCurrentPrice
+        };
     } else {
         axie = await getAxieDetail(fAxie.id)
+
+        if(!axie) {
+            throw new Error("Could not find axie in datastore and api");
+        }
+
         const axieGene = new AxieGene(axie.genes);
-        axieData = axieGene._genes;
-    }
-
-    if(!axieData || !axie) {
-        throw new Error("Could not find axie in datastore and api");
-    }
-
-    const geneData = {
-        ...axieData,
-        class: axieData.cls,
-        breedCount: axie.breedCount,
-        eyes: axieData.eyes,
-        ears: axieData.ears,
-        horn: axieData.horn,
-        mouth: axieData.mouth,
-        back: axieData.back,
-        tail: axieData.tail,
-    }
-
-    // TODO: Auction data must be updated all the time
-    const dataWithPrice = {
-        ...geneData,
-        currentPrice: axie.auction.currentPriceUSD,
-    }
-
-    if(!isAxieInDatastore) {
+        const genesData = axieGene._genes;
+        axieGenes = {
+            ...axieCurrentPrice,
+            id: axie.id,
+            name: axie.name,
+            breedCount: axie.breedCount,
+            image: axie.figure.image,
+            class: genesData.cls,
+            eyes: genesData.eyes,
+            ears: genesData.ears,
+            horn: genesData.horn,
+            mouth: genesData.mouth,
+            back: genesData.back,
+            tail: genesData.tail,
+        };
         const kind = "Axie"
-        const taskKey = datastore.key([kind, geneData.id]);
+        const taskKey = datastore.key([kind, axieGenes.id]);
         await datastore.save({
             key: taskKey,
-            data: geneData
+            data: axieGenes
         })
     }
 
-    console.log(dataWithPrice)
+    console.log(axieGenes)
 })();
