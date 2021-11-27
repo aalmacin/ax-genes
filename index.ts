@@ -102,65 +102,66 @@ async function getAxiesFromMarketPlace() {
 (async () => {
     await redisClient.connect();
     const axies = await getAxiesFromMarketPlace();
-    // TODO: Loop
-    const fAxie = axies[0]
-    const axieCurrentPrice = {currentPrice: fAxie.auction.currentPriceUSD}
+    const axiePromises = axies.map(async (currAxie: any) => {
+        const axieCurrentPrice = {currentPrice: currAxie.auction.currentPriceUSD}
 
-    if(fAxie.battleInfo && fAxie.battleInfo.banned) {
-        return;
-    }
-
-    let dataFrom = 'Cache'
-    let axieGenes = await redisClient.get(fAxie.id);
-    if(!axieGenes) {
-        let axie = await getAxieFromDatastore(fAxie.id);
-        const isAxieInDatastore = axie !== undefined;
-
-        if(isAxieInDatastore) {
-            dataFrom = 'Datastore'
-            axieGenes = {
-                ...axie, 
-            };
-        } else {
-            axie = await getAxieDetail(fAxie.id)
-
-            if(!axie) {
-                throw new Error("Could not find axie in datastore and api");
-            }
-            dataFrom = 'API'
-
-            const axieGene = new AxieGene(axie.genes);
-            const genesData = axieGene._genes;
-            axieGenes = {
-                id: axie.id,
-                name: axie.name,
-                breedCount: axie.breedCount,
-                image: axie.figure.image,
-                class: genesData.cls,
-                eyes: genesData.eyes,
-                ears: genesData.ears,
-                horn: genesData.horn,
-                mouth: genesData.mouth,
-                back: genesData.back,
-                tail: genesData.tail,
-            };
-            const kind = "Axie"
-            const taskKey = datastore.key([kind, axieGenes.id]);
-            await datastore.save({
-                key: taskKey,
-                data: axieGenes
-            })
+        if(currAxie.battleInfo && currAxie.battleInfo.banned) {
+            return;
         }
 
-        await redisClient.set(axieGenes.id, JSON.stringify(axieGenes));
-    } else {
-        axieGenes = JSON.parse(axieGenes);
-    }
+        let dataFrom = 'Cache'
+        let axieGenes = await redisClient.get(currAxie.id);
+        if(!axieGenes) {
+            let axie = await getAxieFromDatastore(currAxie.id);
+            const isAxieInDatastore = axie !== undefined;
 
-    const returnData = {
-        ...axieGenes,
-        ...axieCurrentPrice
-    }
-    console.log(dataFrom, returnData)
+            if(isAxieInDatastore) {
+                dataFrom = 'Datastore'
+                axieGenes = {
+                    ...axie, 
+                };
+            } else {
+                axie = await getAxieDetail(currAxie.id)
+
+                if(!axie) {
+                    throw new Error("Could not find axie in datastore and api");
+                }
+                dataFrom = 'API'
+
+                const axieGene = new AxieGene(axie.genes);
+                const genesData = axieGene._genes;
+                axieGenes = {
+                    id: axie.id,
+                    name: axie.name,
+                    breedCount: axie.breedCount,
+                    image: axie.figure.image,
+                    class: genesData.cls,
+                    eyes: genesData.eyes,
+                    ears: genesData.ears,
+                    horn: genesData.horn,
+                    mouth: genesData.mouth,
+                    back: genesData.back,
+                    tail: genesData.tail,
+                };
+                const kind = "Axie"
+                const taskKey = datastore.key([kind, axieGenes.id]);
+                await datastore.save({
+                    key: taskKey,
+                    data: axieGenes
+                })
+            }
+
+            await redisClient.set(axieGenes.id, JSON.stringify(axieGenes));
+        } else {
+            axieGenes = JSON.parse(axieGenes);
+        }
+
+        const returnData = {
+            ...axieGenes,
+            ...axieCurrentPrice
+        }
+        console.log(dataFrom, returnData)
+    })
+    await Promise.all(axiePromises)
     redisClient.quit();
 })();
