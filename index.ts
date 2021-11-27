@@ -111,7 +111,8 @@ async function getAxiesFromMarketPlace() {
     }
 
     let dataFrom = 'Cache'
-    let axieGenes = await redisClient.get(fAxie.id);
+    // let axieGenes = await redisClient.get(fAxie.id);
+    let axieGenes = undefined;
     if(!axieGenes) {
         let axie = await getAxieFromDatastore(fAxie.id);
         const isAxieInDatastore = axie !== undefined;
@@ -152,7 +153,7 @@ async function getAxiesFromMarketPlace() {
             })
         }
 
-        await redisClient.set(axieGenes.id, axieGenes);
+        // await redisClient.set(axieGenes.id, axieGenes);
     }
 
     const returnData = {
