@@ -3,8 +3,9 @@ const {Datastore} = require('@google-cloud/datastore');
 const { AxieGene } = require("agp-npm/dist/axie-gene");
 const queries = require('./queries');
 const datastore = new Datastore();
-const NodeCache = require('node-cache');
-const cache = new NodeCache( { stdTTL: 100, checkperiod: 120 } );
+const redisClient = require('redis');
+redisClient.createClient()
+redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 
 // TODOS:
@@ -99,6 +100,7 @@ async function getAxiesFromMarketPlace() {
 }
 
 (async () => {
+    await redisClient.connect();
     const axies = await getAxiesFromMarketPlace();
     // TODO: Loop
     const fAxie = axies[0]
@@ -109,7 +111,7 @@ async function getAxiesFromMarketPlace() {
     }
 
     let dataFrom = 'Cache'
-    let axieGenes = cache.get(fAxie.id);
+    let axieGenes = await redisClient.get(fAxie.id);
     if(!axieGenes) {
         let axie = await getAxieFromDatastore(fAxie.id);
         const isAxieInDatastore = axie !== undefined;
@@ -150,7 +152,7 @@ async function getAxiesFromMarketPlace() {
             })
         }
 
-        cache.set(axieGenes.id, axieGenes, 1000 * 60 * 60 * 24 * 7);
+        await redisClient.set(axieGenes.id, axieGenes);
     }
 
     const returnData = {
