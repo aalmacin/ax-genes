@@ -14,7 +14,9 @@
     "@google-cloud/datastore": "^6.6.2",
     "agp-npm": "^1.0.9",
     "node-fetch": "^2.6.6",
-    "redis": "^4.0.0"
+    "redis": "^4.0.0",
+    "winston": "^3.3.3",
+    "winston-daily-rotate-file": "^4.5.5"
   },
   "devDependencies": {
     "ts-node": "^10.4.0"

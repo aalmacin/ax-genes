@@ -5,7 +5,20 @@ const queries = require('./queries');
 const datastore = new Datastore();
 const redis = require('redis');
 const redisClient = redis.createClient()
-redisClient.on('error', (err: any) => console.log('Redis Client Error', err));
+
+const winston = require('winston');
+
+const DailyRotateFile = require('winston-daily-rotate-file');
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.plain(),
+  transports: [
+    new DailyRotateFile({ filename: 'error.log', level: 'error' }),
+    new DailyRotateFile({ filename: 'combined.log' }),
+  ],
+});
+
+redisClient.on('error', (err: any) => logger.error('Redis Client Error', err));
 
 
 // TODOS:
@@ -27,20 +40,25 @@ type AxieGenes = {
 }
 
 async function getAxieDetail(axieId: string) {
-    const response =  await fetchAPI("https://axieinfinity.com/graphql-server-v2/graphql", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            query: queries.GetAxieDetail,
-            variables: {
-                axieId
-            }
+    try {
+        const response =  await fetchAPI("https://axieinfinity.com/graphql-server-v2/graphql", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.GetAxieDetail,
+                variables: {
+                    axieId
+                }
+            })
         })
-    })
-    const responseJson = await response.json();
-    return responseJson.data.axie;
+        const responseJson = await response.json();
+        return responseJson.data.axie;
+    } catch (e) {
+        logger.error("Failed to get Axie detail for", axieId);
+        logger.error(e);
+    }
 }
 
 async function getAxieFromDatastore(axieId: string) {
@@ -53,7 +71,7 @@ async function getAxieFromDatastore(axieId: string) {
     return undefined;
 }
 
-const getAxies = async (from: number, size: number) => {
+const getAxies = async ({from, size}: any) => {
     const marketResponse = await fetchAPI("https://graphql-gateway.axieinfinity.com/graphql", {
         method: "POST",
         headers: {
@@ -94,7 +112,7 @@ const getAxies = async (from: number, size: number) => {
 
 (async () => {
     await redisClient.connect();
-    const firstRes = await getAxies(0, 100);
+    const firstRes = await getAxies({from: 0, size: 100});
     let axies = firstRes.axies.results
     const pages = firstRes.axies.total / 100;
 
@@ -102,7 +120,7 @@ const getAxies = async (from: number, size: number) => {
     let page = 0;
     do {
         if(page !== 0) {
-            const res = await getAxies(page * 100, 100);
+            const res = await getAxies({from: page * 100, size: 100});
             axies = res.axies.results
         }
         const axiePromises = axies.map(async (currAxie: any) => {
@@ -166,7 +184,7 @@ const getAxies = async (from: number, size: number) => {
             // console.log(dataFrom, returnData)
             completed++;
         })
-        await Promise.all(axiePromises.map((p: Promise<any>) => p.then(() => console.log("COMPLETED: ", completed)).catch(e => console.log("COMPLETED: ", completed, e))))
+        await Promise.all(axiePromises.map((p: Promise<any>) => p.then(() => logger.info("COMPLETED: ", completed)).catch(e => logger.info("COMPLETED: ", completed, e))))
 
         page++;
     } while(page <= pages)
