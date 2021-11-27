@@ -82,9 +82,9 @@ async function getAxieFromDatastore(axieId) {
     }
 
     let axieData = {
-        id: axie.id,
-        name: axie.name,
-        image: axie.figure.image,
+        id: fAxie.id,
+        name: fAxie.name,
+        image: fAxie.figure.image,
     };
     let axie = await getAxieFromDatastore(fAxie.id);
     const isAxieInDatastore = axie !== undefined;
