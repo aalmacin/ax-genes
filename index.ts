@@ -39,7 +39,6 @@ async function getAxieDetail(axieId: string) {
         })
     })
     const responseJson = await response.json();
-    console.log("Get axie from graphql api")
     return responseJson.data.axie;
 }
 
@@ -50,7 +49,6 @@ async function getAxieFromDatastore(axieId: string) {
     if(axie.length !== 0) {
         return axie[0];
     }
-    console.log("Get axie from datastore")
     return undefined;
 }
 
@@ -110,12 +108,14 @@ async function getAxiesFromMarketPlace() {
         return;
     }
 
+    let dataFrom = 'Cache'
     let axieGenes = cache.get(fAxie.id);
     if(!axieGenes) {
         let axie = await getAxieFromDatastore(fAxie.id);
         const isAxieInDatastore = axie !== undefined;
 
         if(isAxieInDatastore) {
+            dataFrom = 'Datastore'
             axieGenes = {
                 ...axie, 
             };
@@ -125,6 +125,7 @@ async function getAxiesFromMarketPlace() {
             if(!axie) {
                 throw new Error("Could not find axie in datastore and api");
             }
+            dataFrom = 'API'
 
             const axieGene = new AxieGene(axie.genes);
             const genesData = axieGene._genes;
@@ -150,13 +151,11 @@ async function getAxiesFromMarketPlace() {
         }
 
         cache.set(axieGenes.id, axieGenes, 1000 * 60 * 60 * 24 * 7);
-    } else {
-        console.log("Get axie from cache")
     }
 
     const returnData = {
         ...axieGenes,
         ...axieCurrentPrice
     }
-    console.log(returnData)
+    console.log(dataFrom, returnData)
 })();
