@@ -3,8 +3,8 @@ const {Datastore} = require('@google-cloud/datastore');
 const { AxieGene } = require("agp-npm/dist/axie-gene");
 const queries = require('./queries');
 const datastore = new Datastore();
-const redisClient = require('redis');
-redisClient.createClient()
+const redis = require('redis');
+const redisClient = redis.createClient()
 redisClient.on('error', (err: any) => console.log('Redis Client Error', err));
 
 
