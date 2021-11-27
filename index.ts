@@ -5,7 +5,7 @@ const queries = require('./queries');
 const datastore = new Datastore();
 const redisClient = require('redis');
 redisClient.createClient()
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
+redisClient.on('error', (err: any) => console.log('Redis Client Error', err));
 
 
 // TODOS:
