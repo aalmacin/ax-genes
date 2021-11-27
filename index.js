@@ -82,7 +82,7 @@ async function getAxieFromDatastore(axieId) {
     }
 
     let currentAxieGenes;
-    let axie = await getAxieFromDatastore(fAxie.axieId);
+    let axie = await getAxieFromDatastore(fAxie.id);
     const isAxieInDatastore = axie !== undefined;
 
     if(!isAxieInDatastore) {
