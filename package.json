@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/datastore": "^6.6.2",
     "agp-npm": "^1.0.9",
     "node-fetch": "^2.6.6"
   }
