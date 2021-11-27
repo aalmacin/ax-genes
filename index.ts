@@ -162,6 +162,6 @@ async function getAxiesFromMarketPlace() {
         }
         console.log(dataFrom, returnData)
     })
-    await Promise.all(axiePromises.map(p => p.catch(e => console.log(e))))
+    await Promise.all(axiePromises.map((p: Promise<any>) => p.catch(e => console.log(e))))
     redisClient.quit();
 })();
