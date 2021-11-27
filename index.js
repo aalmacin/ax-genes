@@ -85,7 +85,7 @@ async function getAxieFromDatastore(axieId) {
     let axie = await getAxieFromDatastore(fAxie.id);
     const isAxieInDatastore = axie !== undefined;
 
-    if(!isAxieInDatastore) {
+    if(isAxieInDatastore) {
         currentAxieGenes = axie;
     } else {
         axie = await getAxieDetail(fAxie.id)
