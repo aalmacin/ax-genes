@@ -1,3 +1,4 @@
+const {Datastore} = require('@google-cloud/datastore');
 const { AxieGene } = require("agp-npm/dist/axie-gene");
 const fetch = require("node-fetch");
 
@@ -91,7 +92,7 @@ const fetch = require("node-fetch");
     });
     const res = await marketResponse.json();
     const axies = res.data.axies.results;
-    console.log(axies);
+    const fAxie = axies[0]
 
     const response =  await fetch("https://axieinfinity.com/graphql-server-v2/graphql", {
         method: "POST",
@@ -205,13 +206,43 @@ const fetch = require("node-fetch");
             }
             `,
             variables: {
-                axieId: '6613417'
+                axieId: fAxie.id
             }
         })
     })
     const responseJson = await response.json();
     const axie = responseJson.data.axie;
 
+    if(axie.battleInfo && axie.battleInfo.banned) {
+        return;
+    }
+
     const axieGene = new AxieGene(axie.genes);
-    console.log(axieGene._genes);
+    const currentAxieGenes = axieGene._genes;
+    // TODO: Auction data must be updated all the time
+    const combinedData = {
+        id: axie.id,
+        name: axie.name,
+        class: currentAxieGenes.cls,
+        breedCount: axie.breedCount,
+        image: axie.figure.image,
+        currentPrice: axie.auction.currentPriceUSD,
+        eyes: currentAxieGenes.eyes,
+        ears: currentAxieGenes.ears,
+        horn: currentAxieGenes.horn,
+        mouth: currentAxieGenes.mouth,
+        back: currentAxieGenes.back,
+        tail: currentAxieGenes.tail,
+    }
+    const kind = "Axie"
+    const datastore = new Datastore();
+
+    const taskKey = datastore.key([kind, combinedData.id]);
+
+    await datastore.save({
+        key: taskKey,
+        data: combinedData
+    })
+
+    console.log(combinedData)
 })();
