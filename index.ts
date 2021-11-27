@@ -54,56 +54,58 @@ async function getAxieFromDatastore(axieId: string) {
 }
 
 async function getAxiesFromMarketPlace() {
-    const marketResponse = await fetchAPI("https://graphql-gateway.axieinfinity.com/graphql", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            query: queries.GetAxieBriefList,
-            variables: {
-                "from": 0,
-                "size": 10000000,
-                "sort": "PriceAsc",
-                "auctionType": "Sale",
-                "owner": null,
-                "criteria": {
-                  "region": null,
-                  "parts": [
-                    "tail-yam",
-                    "tail-carrot",
-                    "back-pumpkin",
-                    "mouth-serious",
-                    "horn-cactus"
-                  ],
-                  "bodyShapes": null,
-                  "classes": [
-                    "Plant"
-                  ],
-                  "stages": null,
-                  "numMystic": null,
-                  "pureness": null,
-                  "title": null,
-                  "breedable": null,
-                  "breedCount": null,
-                  "hp": [],
-                  "skill": [],
-                  "speed": [],
-                  "morale": []
-                },
-                "filterStuckAuctions": true
-              } 
-        })
-    });
-    const res = await marketResponse.json();
-    return res.data.axies.results;
+    const getAxies = async (from: number, size: number) => {
+        const marketResponse = await fetchAPI("https://graphql-gateway.axieinfinity.com/graphql", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                query: queries.GetAxieBriefList,
+                variables: {
+                    "from": from,
+                    "size": size,
+                    "sort": "PriceAsc",
+                    "auctionType": "Sale",
+                    "owner": null,
+                    "criteria": {
+                      "region": null,
+                      "parts": null,
+                      "bodyShapes": null,
+                      "classes": null,
+                      "stages": null,
+                      "numMystic": null,
+                      "pureness": null,
+                      "title": null,
+                      "breedable": null,
+                      "breedCount": null,
+                      "hp": [],
+                      "skill": [],
+                      "speed": [],
+                      "morale": []
+                    },
+                    "filterStuckAuctions": true
+                  } 
+            })
+        });
+        const res = await marketResponse.json();
+        return res.data;
+    }
+    const firstRes = await getAxies(0, 100);
+    const axies = firstRes.axies.results
+    const pages = firstRes.axies.total / 100;
+    for(let i = 1; i < pages; i++) {
+        const res = await getAxies(i * 100, 100);
+        axies.push(...res.axies.results);
+    }
+    return axies;
 }
 
 (async () => {
     await redisClient.connect();
     const axies = await getAxiesFromMarketPlace();
     const axiePromises = axies.map(async (currAxie: any) => {
-        const axieCurrentPrice = {currentPrice: currAxie.auction.currentPriceUSD}
+        // const axieCurrentPrice = {currentPrice: currAxie.auction.currentPriceUSD}
 
         if(currAxie.battleInfo && currAxie.battleInfo.banned) {
             return;
@@ -156,11 +158,11 @@ async function getAxiesFromMarketPlace() {
             axieGenes = JSON.parse(axieGenes);
         }
 
-        const returnData = {
-            ...axieGenes,
-            ...axieCurrentPrice
-        }
-        console.log(dataFrom, returnData)
+        // const returnData = {
+        //     ...axieGenes,
+        //     ...axieCurrentPrice
+        // }
+        // console.log(dataFrom, returnData)
     })
     await Promise.all(axiePromises.map((p: Promise<any>) => p.catch(e => console.log(e))))
     redisClient.quit();
