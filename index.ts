@@ -3,7 +3,9 @@ const {Datastore} = require('@google-cloud/datastore');
 const { AxieGene } = require("agp-npm/dist/axie-gene");
 const queries = require('./queries');
 const datastore = new Datastore();
-const cache = require('memory-cache');
+const NodeCache = require('node-cache');
+const cache = new NodeCache( { stdTTL: 100, checkperiod: 120 } );
+
 
 // TODOS:
 // 1. Memory cache
