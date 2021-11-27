@@ -104,7 +104,7 @@ async function getAxiesFromMarketPlace() {
     let axie = await getAxieFromDatastore(fAxie.id);
     const isAxieInDatastore = axie !== undefined;
 
-    const axieCurrentPrice = {currentPrice: axie.auction.currentPriceUSD}
+    const axieCurrentPrice = {currentPrice: fAxie.auction.currentPriceUSD}
     if(isAxieInDatastore) {
         axieGenes = {
             ...axie, 
