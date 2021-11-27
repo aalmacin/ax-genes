@@ -23,7 +23,7 @@ async function getAxieDetail(axieId) {
 
 async function getAxieFromDatastore(axieId) {
     const query = datastore.createQuery('Axie')
-        .filter('axieId', axieId);
+        .filter('id', axieId);
     const [axie] = await datastore.runQuery(query);
     if(axie.length !== 0) {
         return axie[0];
@@ -82,7 +82,7 @@ async function getAxieFromDatastore(axieId) {
     }
 
     let currentAxieGenes;
-    let axie = getAxieFromDatastore(fAxie.axieId);
+    let axie = await getAxieFromDatastore(fAxie.axieId);
     const isAxieInDatastore = axie !== undefined;
 
     if(!isAxieInDatastore) {
