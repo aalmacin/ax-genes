@@ -53,117 +53,120 @@ async function getAxieFromDatastore(axieId: string) {
     return undefined;
 }
 
-async function getAxiesFromMarketPlace() {
-    const getAxies = async (from: number, size: number) => {
-        const marketResponse = await fetchAPI("https://graphql-gateway.axieinfinity.com/graphql", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                query: queries.GetAxieBriefList,
-                variables: {
-                    "from": from,
-                    "size": size,
-                    "sort": "PriceAsc",
-                    "auctionType": "Sale",
-                    "owner": null,
-                    "criteria": {
-                      "region": null,
-                      "parts": null,
-                      "bodyShapes": null,
-                      "classes": null,
-                      "stages": null,
-                      "numMystic": null,
-                      "pureness": null,
-                      "title": null,
-                      "breedable": null,
-                      "breedCount": null,
-                      "hp": [],
-                      "skill": [],
-                      "speed": [],
-                      "morale": []
-                    },
-                    "filterStuckAuctions": true
-                  } 
-            })
-        });
-        const res = await marketResponse.json();
-        return res.data;
-    }
-    const firstRes = await getAxies(0, 100);
-    const axies = firstRes.axies.results
-    const pages = firstRes.axies.total / 100;
-    for(let i = 1; i < pages; i++) {
-        const res = await getAxies(i * 100, 100);
-        axies.push(...res.axies.results);
-    }
-    return axies;
+const getAxies = async (from: number, size: number) => {
+    const marketResponse = await fetchAPI("https://graphql-gateway.axieinfinity.com/graphql", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            query: queries.GetAxieBriefList,
+            variables: {
+                "from": from,
+                "size": size,
+                "sort": "PriceAsc",
+                "auctionType": "Sale",
+                "owner": null,
+                "criteria": {
+                    "region": null,
+                    "parts": null,
+                    "bodyShapes": null,
+                    "classes": null,
+                    "stages": null,
+                    "numMystic": null,
+                    "pureness": null,
+                    "title": null,
+                    "breedable": null,
+                    "breedCount": null,
+                    "hp": [],
+                    "skill": [],
+                    "speed": [],
+                    "morale": []
+                },
+                "filterStuckAuctions": true
+                } 
+        })
+    });
+    const res = await marketResponse.json();
+    return res.data;
 }
+
 
 (async () => {
     await redisClient.connect();
-    const axies = await getAxiesFromMarketPlace();
-    const axiePromises = axies.map(async (currAxie: any) => {
-        // const axieCurrentPrice = {currentPrice: currAxie.auction.currentPriceUSD}
+    const firstRes = await getAxies(0, 100);
+    let axies = firstRes.axies.results
+    const pages = firstRes.axies.total / 100;
 
-        if(currAxie.battleInfo && currAxie.battleInfo.banned) {
-            return;
+    let page = 0;
+    do {
+        if(page !== 0) {
+            const res = await getAxies(page * 100, 100);
+            axies = res.axies.results
         }
+        const axiePromises = axies.map(async (currAxie: any) => {
+            // const axieCurrentPrice = {currentPrice: currAxie.auction.currentPriceUSD}
 
-        let dataFrom = 'Cache'
-        let axieGenes = await redisClient.get(currAxie.id);
-        if(!axieGenes) {
-            let axie = await getAxieFromDatastore(currAxie.id);
-            const isAxieInDatastore = axie !== undefined;
-
-            if(isAxieInDatastore) {
-                dataFrom = 'Datastore'
-                axieGenes = {
-                    ...axie, 
-                };
-            } else {
-                axie = await getAxieDetail(currAxie.id)
-
-                if(!axie) {
-                    throw new Error("Could not find axie in datastore and api");
-                }
-                dataFrom = 'API'
-
-                const axieGene = new AxieGene(axie.genes);
-                const genesData = axieGene._genes;
-                axieGenes = {
-                    id: axie.id,
-                    name: axie.name,
-                    breedCount: axie.breedCount,
-                    image: axie.figure.image,
-                    class: genesData.cls,
-                    eyes: genesData.eyes,
-                    ears: genesData.ears,
-                    horn: genesData.horn,
-                    mouth: genesData.mouth,
-                    back: genesData.back,
-                    tail: genesData.tail,
-                };
-                const kind = "Axie"
-                const taskKey = datastore.key([kind, axieGenes.id]);
-                await datastore.save({
-                    key: taskKey,
-                    data: axieGenes
-                })
+            if(currAxie.battleInfo && currAxie.battleInfo.banned) {
+                return;
             }
 
-            await redisClient.set(axieGenes.id, JSON.stringify(axieGenes));
-        } else {
-            axieGenes = JSON.parse(axieGenes);
-        }
+            let dataFrom = 'Cache'
+            let axieGenes = await redisClient.get(currAxie.id);
+            if(!axieGenes) {
+                let axie = await getAxieFromDatastore(currAxie.id);
+                const isAxieInDatastore = axie !== undefined;
 
-        // const returnData = {
-        //     ...axieGenes,
-        //     ...axieCurrentPrice
-        // }
-        // console.log(dataFrom, returnData)
-    })
-    await Promise.all(axiePromises.map((p: Promise<any>) => p.catch(e => console.log(e))))
+                if(isAxieInDatastore) {
+                    dataFrom = 'Datastore'
+                    axieGenes = {
+                        ...axie, 
+                    };
+                } else {
+                    axie = await getAxieDetail(currAxie.id)
+
+                    if(!axie) {
+                        throw new Error("Could not find axie in datastore and api");
+                    }
+                    dataFrom = 'API'
+
+                    const axieGene = new AxieGene(axie.genes);
+                    const genesData = axieGene._genes;
+                    axieGenes = {
+                        id: axie.id,
+                        name: axie.name,
+                        breedCount: axie.breedCount,
+                        image: axie.figure.image,
+                        class: genesData.cls,
+                        eyes: genesData.eyes,
+                        ears: genesData.ears,
+                        horn: genesData.horn,
+                        mouth: genesData.mouth,
+                        back: genesData.back,
+                        tail: genesData.tail,
+                    };
+                    const kind = "Axie"
+                    const taskKey = datastore.key([kind, axieGenes.id]);
+                    await datastore.save({
+                        key: taskKey,
+                        data: axieGenes
+                    })
+                }
+
+                await redisClient.set(axieGenes.id, JSON.stringify(axieGenes));
+            } else {
+                axieGenes = JSON.parse(axieGenes);
+            }
+
+            // const returnData = {
+            //     ...axieGenes,
+            //     ...axieCurrentPrice
+            // }
+            // console.log(dataFrom, returnData)
+        })
+        await Promise.all(axiePromises.map((p: Promise<any>) => p.catch(e => console.log(e))))
+
+        page++;
+    } while(page <= pages)
     redisClient.quit();
 })();
